@@ -13,14 +13,15 @@ class Izaro:
         self.guid = guid
         self.cod_trab = cod_trab
         self.sid = None
+
+        self.error = None
     
+    def get_otp(self):
+        totp = pyotp.TOTP(self.otp)
+        return totp.now()
+
     def login(self):
-        self.create_session_cookie()
-        self.make_login_request()
-        self.make_2fa_request()
-        self.launch_app()
-        self.login_launch()
-        self.validate_user_and_sesion()
+        return self.create_session_cookie() and self.make_login_request() and self.make_2fa_request() and self.launch_app() and self.login_launch() and self.validate_user_and_sesion()
 
     def create_session_cookie(self):
         url = "https://portal.saltosystems.com:47123/"
@@ -30,16 +31,12 @@ class Izaro:
 
         response = requests.request("GET", url, headers=headers, data=payload)
 
-        print("CREATE SESSION COOKIE")
-        print(response.text)
-
         stored_cookie_session = response.headers['set-cookie'].split(';')[0]
         self.web_cookie = stored_cookie_session
+
         return True
     
-    def get_otp(self):
-        totp = pyotp.TOTP(self.otp)
-        return totp.now()
+
     
     def make_login_request(self):
         url = "https://portal.saltosystems.com:47123/Services/Identification.svc/Login"
@@ -68,16 +65,12 @@ class Izaro:
 
         response = requests.request("POST", url, headers=headers, data=payload)
 
-        print("MAKE LOGIN REQUEST")
-        print(response.text)
-
         json_response = response.json()['d']
         self.guid = json_response['GUID']
         if json_response['errorCode'] != 1000:
-            print("Error code: {}".format(json_response['errorDescription']))
-            raise Exception("Error code: Login {}".format(json_response['errorDescription']))
-            # logging.error("Error code: {}".format(json_response['errorDescription']))
-            # exit(1)
+            self.error = json_response['errorDescription']
+            return False
+        return True
     
     def make_2fa_request(self):
         url = "https://portal.saltosystems.com:47123/Services/Identification.svc/SecondStepLogin"
@@ -104,8 +97,10 @@ class Izaro:
 
         response = requests.request("POST", url, headers=headers, data=payload)
 
-        print("MAKE 2FA REQUEST")
-        print(response.text)
+        json_response = response.json()['d']
+        if json_response['errorCode'] != 0:
+            self.error = json_response['errorDescription']
+            return False
 
         return True
     
@@ -134,8 +129,6 @@ class Izaro:
         }
 
         response = requests.request("POST", url, headers=headers, data=payload)
-        print("LAUNCH APP")
-        print(response.text)
 
         self.guid = response.json()['d']['parameters'][0]['Value']
         return True
@@ -156,8 +149,7 @@ class Izaro:
         }
 
         response = requests.request("POST", url, headers=headers, data=payload)
-        print("LOGIN LAUNCH")
-        print(response.text)
+
         self.asp_cookie = response.headers['set-cookie'].split(';')[0]
 
         # login_user = response.text.split('<input type="hidden" id="usu" value="')[1].split('"')[0]
@@ -191,9 +183,8 @@ class Izaro:
         'TE': 'trailers'
         }
 
-        response = requests.request("POST", url, headers=headers, data=payload)
-        print("VALIDATE USER AND SESSION")
-        print(response.text)
+        requests.request("POST", url, headers=headers, data=payload)
+
         return True
     
     def clock_in(self):
@@ -226,5 +217,5 @@ class Izaro:
         'TE': 'trailers'
         }
 
-        response = requests.request("POST", url, headers=headers, data=payload)
+        requests.request("POST", url, headers=headers, data=payload)
         return True
