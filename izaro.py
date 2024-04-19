@@ -21,7 +21,7 @@ class Izaro:
         return totp.now()
 
     def login(self):
-        return self.create_session_cookie() and self.make_login_request() and self.make_2fa_request() and self.launch_app() and self.login_launch() and self.validate_user_and_sesion()
+        return self.create_session_cookie() and self.make_login_request() and self.make_2fa_request() and self.launch_app() and self.login_launch() and self.validate_user_and_sesion() and self.get_cod_trab()
 
     def create_session_cookie(self):
         url = "https://portal.saltosystems.com:47123/"
@@ -218,4 +218,19 @@ class Izaro:
         }
 
         requests.request("POST", url, headers=headers, data=payload)
+        return True
+    
+    def get_cod_trab(self):
+        url = "https://portal.saltosystems.com:47123/izarob2e/ConsFichajes.aspx"
+
+        payload = {}
+        headers = {
+        'Cookie': "{}; {}".format(self.web_cookie, self.asp_cookie),
+        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'
+        }
+
+        response = requests.request("GET", url, headers=headers, data=payload)
+
+        self.cod_trab = response.text.split('<input type="hidden" id="codTrab" value="')[1].split('"')[0]
+
         return True

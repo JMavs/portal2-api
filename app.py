@@ -18,4 +18,10 @@ def login():
         return jsonify({"message": "Login failed", "error": izaro_cli.error}), 401
     if not izaro_cli.clock_in():
         return jsonify({"message": "Clock in failed"}), 401
-    return jsonify({"message": "Success"}), 200
+    cli_settings = vars(izaro_cli)
+    del cli_settings['error']
+    return jsonify({"message": "Success", "auth": cli_settings}), 200
+
+@app.route("/clock-ins", methods=["GET"])
+def clock_ins():
+    return True
