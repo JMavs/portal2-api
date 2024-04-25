@@ -66,7 +66,7 @@ def login():
     encryption_key = os.getenv('ENCRYPTION_KEY')
     token = encryption.Encryption(encryption_key).encrypt(str_cli_settings)
 
-    return jsonify({"message": "Success", "auth": cli_settings, "token": token}), 200
+    return jsonify({"message": "Success", "token": token}), 200
 
 @app.route("/clock-ins", methods=["GET"])
 def clock_ins():
