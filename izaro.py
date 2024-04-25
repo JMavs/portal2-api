@@ -1,6 +1,7 @@
 import requests
 import pyotp
 import json
+import datetime
 
 class Izaro:
     def __init__(self, user, password, otp, wfh=False, web_cookie=None, asp_cookie=None, guid=None, cod_trab=None, sid=None):
@@ -217,10 +218,16 @@ class Izaro:
         'TE': 'trailers'
         }
 
-        requests.request("POST", url, headers=headers, data=payload)
+        response = requests.request("POST", url, headers=headers, data=payload)
+        if response.json()['d'] != 1:
+            self.error = "Error al fichar"
+            return False
+        
         return True
     
     def get_cod_trab(self):
+        if self.cod_trab:
+            return True
         url = "https://portal.saltosystems.com:47123/izarob2e/ConsFichajes.aspx"
 
         payload = {}
@@ -232,5 +239,64 @@ class Izaro:
         response = requests.request("GET", url, headers=headers, data=payload)
 
         self.cod_trab = response.text.split('<input type="hidden" id="codTrab" value="')[1].split('"')[0]
+
+        return True
+    
+    def get_pending_clock_ins(self):
+        if not self.cod_trab:
+            self.get_cod_trab()
+        url = "https://portal.saltosystems.com:47123/izarob2e/services/ControlPr.svc/GetFichajesPendientesProcesar"
+
+        payload = {
+            "empre": "1",
+            "codTrab": self.cod_trab
+        }
+        payload = json.dumps(payload, separators=(',', ':'))
+        headers = {
+        'accept': 'application/json, text/javascript, */*; q=0.01',
+        'accept-language': 'es-ES,es;q=0.7',
+        'content-type': 'application/json; charset=UTF-8',
+        'cookie': "{}; {}".format(self.web_cookie, self.asp_cookie),
+        'origin': 'https://portal.saltosystems.com:47123',
+        'referer': 'https://portal.saltosystems.com:47123/izarob2e/Fichar.aspx',
+        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+        'x-requested-with': 'XMLHttpRequest'
+        }
+
+        response = requests.request("POST", url, headers=headers, data=payload)
+
+        print(response.text)
+
+        return True
+    
+    def get_historical_clock_ins(self):
+        if not self.cod_trab:
+            self.get_cod_trab()
+
+        today = datetime.date.today()
+
+        url = "https://portal.saltosystems.com:47123/izarob2e/services/ControlPr.svc/GetFichajes"
+
+        payload = {
+            "empre": "1",
+            "codTrab": self.cod_trab,
+            "ejercicio": str(today.year),
+            "mes": str(today.month),
+        }
+        payload = json.dumps(payload, separators=(',', ':'))
+        headers = {
+        'accept': 'application/json, text/javascript, */*; q=0.01',
+        'accept-language': 'es-ES,es;q=0.7',
+        'content-type': 'application/json; charset=UTF-8',
+        'cookie': "{}; {}".format(self.web_cookie, self.asp_cookie),
+        'origin': 'https://portal.saltosystems.com:47123',
+        'referer': 'https://portal.saltosystems.com:47123/izarob2e/ConsFichajes.aspx',
+        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+        'x-requested-with': 'XMLHttpRequest'
+        }
+
+        response = requests.request("POST", url, headers=headers, data=payload)
+
+        print(response.text)
 
         return True
