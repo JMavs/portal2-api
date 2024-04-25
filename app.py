@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, g
+from flask import Flask, request, jsonify, g, Response
 from flask_cors import CORS
 import izaro as client
 import os
@@ -10,6 +10,11 @@ CORS(app)
 
 @app.before_request
 def before_request():
+    headers = {'Access-Control-Allow-Origin': '*',
+               'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+               'Access-Control-Allow-Headers': 'Content-Type'}
+    if request.method.lower() == 'options':
+        return jsonify(headers), 200
     try:
         if request.path == '/login' or request.path == '/health' or request.path == '/favicon.ico' or request.path == '/':
             return
