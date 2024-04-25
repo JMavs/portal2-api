@@ -9,5 +9,5 @@ pip install -r requirements.txt
 ## Usage
 
 ```bash
-gunicorn -w 4 app:app
+ENCRYPTION_KEY="XXXXXXXXXXXXXXXXXX" gunicorn -w 4 app:app
 ```
