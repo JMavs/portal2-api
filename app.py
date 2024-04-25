@@ -34,7 +34,8 @@ def before_request():
             token['asp_cookie'],
             token['guid'],
             token['cod_trab'],
-            token['sid']
+            token['sid'],
+            token['expiration']
             )
     except Exception:
         return jsonify({"message": "Forbidden"}), 403
@@ -69,7 +70,12 @@ def login():
 
 @app.route("/clock-ins", methods=["GET"])
 def clock_ins():
-    return True
+    '''
+    Clock ins endpoint
+    '''
+    clock_ins = g.izaro_cli.get_historical_clock_ins()
+    clock_ins_pending = g.izaro_cli.get_pending_clock_ins()
+    return jsonify({"clock_ins": clock_ins, "clock_ins_pending": clock_ins_pending}), 200
 
 @app.route("/clock-in", methods=["POST"])
 def clock_in():
@@ -82,7 +88,7 @@ def clock_in():
         return jsonify({"message": "Clock in failed", "error": g.izaro_cli.error}), 401
     return jsonify({"message": "Success"}), 200
 
-@app.route("health", methods=["GET"])
+@app.route("/health", methods=["GET"])
 def health():
     '''
     Health endpoint

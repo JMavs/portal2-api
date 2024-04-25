@@ -4,7 +4,7 @@ import json
 import datetime
 
 class Izaro:
-    def __init__(self, user, password, otp, wfh=False, web_cookie=None, asp_cookie=None, guid=None, cod_trab=None, sid=None):
+    def __init__(self, user, password, otp, wfh=False, web_cookie=None, asp_cookie=None, guid=None, cod_trab=None, sid=None, expiration=None):
         self.user = user
         self.password = password
         self.otp = otp
@@ -13,7 +13,8 @@ class Izaro:
         self.asp_cookie = asp_cookie
         self.guid = guid
         self.cod_trab = cod_trab
-        self.sid = None
+        self.sid = sid
+        self.expiration = expiration
 
         self.error = None
     
@@ -34,10 +35,14 @@ class Izaro:
 
         stored_cookie_session = response.headers['set-cookie'].split(';')[0]
         self.web_cookie = stored_cookie_session
+        self.expiration = str(datetime.datetime.now() + datetime.timedelta(minutes=5))
 
         return True
     
-
+    def refresh_session_if_needed(self):
+        if datetime.datetime.strptime(self.expiration, '%Y-%m-%d %H:%M:%S.%f') < datetime.datetime.now():
+            return self.login()
+        return True
     
     def make_login_request(self):
         url = "https://portal.saltosystems.com:47123/Services/Identification.svc/Login"
@@ -189,6 +194,8 @@ class Izaro:
         return True
     
     def clock_in(self):
+        self.refresh_session_if_needed()
+
         url = "https://portal.saltosystems.com:47123/izarob2e/services/ControlPr.svc/InsertFichaje"
 
         payload = {
@@ -228,6 +235,7 @@ class Izaro:
     def get_cod_trab(self):
         if self.cod_trab:
             return True
+        
         url = "https://portal.saltosystems.com:47123/izarob2e/ConsFichajes.aspx"
 
         payload = {}
@@ -243,8 +251,8 @@ class Izaro:
         return True
     
     def get_pending_clock_ins(self):
-        if not self.cod_trab:
-            self.get_cod_trab()
+        self.refresh_session_if_needed()
+
         url = "https://portal.saltosystems.com:47123/izarob2e/services/ControlPr.svc/GetFichajesPendientesProcesar"
 
         payload = {
@@ -265,13 +273,16 @@ class Izaro:
 
         response = requests.request("POST", url, headers=headers, data=payload)
 
-        print(response.text)
+        all_clock_ins = response.json()['d']
 
-        return True
+        formated_clock_ins = []
+        for clock_in in all_clock_ins:
+            formated_clock_ins.append(Check(clock_in['HoraFichaje'], "-", None).to_dict())
+
+        return formated_clock_ins
     
     def get_historical_clock_ins(self):
-        if not self.cod_trab:
-            self.get_cod_trab()
+        self.refresh_session_if_needed()
 
         today = datetime.date.today()
 
@@ -297,6 +308,35 @@ class Izaro:
 
         response = requests.request("POST", url, headers=headers, data=payload)
 
-        print(response.text)
+        all_clock_ins = response.json()['d']
 
-        return True
+        today_clock_ins = [clock_in for clock_in in all_clock_ins if clock_in['Fecha'] == today.strftime('%d/%m/%Y')][0]['Fichajes']
+
+        formated_clock_ins = []
+        for clock_in in today_clock_ins:
+            formated_clock_ins.append(Check(clock_in['Fichaje'].split('-')[1], clock_in['TipoFichaje'], clock_in['MotivoFichaje']).to_dict())
+
+        return formated_clock_ins
+    
+
+class Check:
+    def __init__(self, time, type, wfh) -> None:
+        self.time = time
+        switcher = {
+            "E": "Entrada",
+            "S": "Salida",
+            "2": "Salida automática",
+            "-": "No definido",
+        }
+        self.type = switcher[type]
+        if wfh:
+            self.wfh = True
+        else:
+            self.wfh = False
+
+    def to_dict(self):
+        return {
+            "time": self.time,
+            "type": self.type,
+            "wfh": self.wfh
+        }
