@@ -89,6 +89,12 @@ def clock_in():
     
     This endpoint clocks in the user
     '''
+    if not request.is_json:
+        return jsonify({"message": "Request is not JSON"}), 400
+    request_data = request.get_json()
+    if 'wfh' not in request_data:
+        return jsonify({"message": "Missing required wfh field"}), 400
+    g.izaro_cli.wfh = request_data['wfh']
     if not g.izaro_cli.clock_in():
         return jsonify({"message": "Clock in failed", "error": g.izaro_cli.error}), 401
     return jsonify({"message": "Success"}), 200
